@@ -1,0 +1,5 @@
+*.egg-info
+*.txt
+!requirements.txt
+
+__pycache__
