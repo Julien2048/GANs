@@ -19,6 +19,7 @@ class GANS():
         self.sde = sde
         self.data_loader = data_loader
         self.sampler = sampler
+        self.device = device
         self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(self.device)
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
