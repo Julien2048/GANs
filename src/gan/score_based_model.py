@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,11 +24,10 @@ class Dense(nn.Module):
   def forward(self, x):
     return self.dense(x)[..., None, None]
 
-
 class ScoreNet(nn.Module):
   """A time-dependent score-based model built upon U-Net architecture."""
 
-  def __init__(self, marginal_prob_std, channels=[32, 64, 128, 256], embed_dim=256):
+  def __init__(self, marginal_prob, channels=[32, 64, 128, 256], embed_dim=256):
     """Initialize a time-dependent score-based network.
 
     Args:
@@ -68,7 +68,7 @@ class ScoreNet(nn.Module):
     
     # The swish activation function
     self.act = lambda x: x * torch.sigmoid(x)
-    self.marginal_prob_std = marginal_prob_std
+    self.marginal_prob = marginal_prob
   
   def forward(self, x, t): 
     # Obtain the Gaussian random feature embedding for t   
@@ -110,5 +110,6 @@ class ScoreNet(nn.Module):
     h = self.tconv1(torch.cat([h, h1], dim=1))
 
     # Normalize output
-    h = h / self.marginal_prob_std(t)[:, None, None, None]
+    _, std = self.marginal_prob(x, t)
+    h = h / std[:, None, None, None]
     return h
