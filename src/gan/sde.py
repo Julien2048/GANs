@@ -1,5 +1,6 @@
 import abc
 import torch
+import numpy as np
 
 
 class SDE(abc.ABC):
@@ -100,27 +101,28 @@ class SDE(abc.ABC):
     return RSDE()
   
 class SimpleSDE(SDE):
-    def __init__(self, sigma: float = 25, N=1000):
+    def __init__(self, sigma: float = 25, N=1000, device: str = 'cuda'):
       # super.__init__(N)
       self.N = N
       self.sigma = sigma
+      self.device = device
 
     def T(self):
       return 1
 
     def sde(self, x, t):
       drift = torch.tensor(0)
-      diffusion = torch.tensor(self.sigma ** t, device=device)
+      diffusion = torch.tensor(self.sigma ** t, device=self.device)
       return drift, diffusion
 
     def marginal_prob(self, x, t):
       mean = x
-      std = torch.sqrt((self.sigma**(2 * torch.tensor(t, device=device)) - 1.) / 2. / np.log(self.sigma))
+      std = torch.sqrt((self.sigma**(2 * torch.tensor(t, device=self.device)) - 1.) / 2. / np.log(self.sigma))
       return mean, std
 
     def prior_sampling(self, shape):
-      t = torch.ones(shape[0], device=device)
-      return torch.randn(shape[0], 1, 28, 28, device=device) * torch.sqrt((self.sigma**(2 * torch.tensor(t, device=device)) - 1.) / 2. / np.log(self.sigma))[:, None, None, None]
+      t = torch.ones(shape[0], device=self.device)
+      return torch.randn(shape[0], 1, 28, 28, device=self.device) * torch.sqrt((self.sigma**(2 * torch.tensor(t, device=self.device)) - 1.) / 2. / np.log(self.sigma))[:, None, None, None]
 
     def prior_logp(self):
       pass

@@ -12,13 +12,14 @@ class GANS():
         data_loader,
         sde,
         sampler,
-        eps=1e-5 
+        eps=1e-5,
+        device: str = 'cuda'
     ) -> None:
         self.model = model
         self.sde = sde
         self.data_loader = data_loader
         self.sampler = sampler
-        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(device)
+        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(self.device)
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
 
@@ -41,7 +42,7 @@ class GANS():
           num_items = 0
         
           for x, y in self.data_loader:
-              x = x.to(device)
+              x = x.to(self.device)
               loss = self._loss_fn(x)
               optimizer.zero_grad()
               loss.backward()
@@ -56,7 +57,7 @@ class GANS():
       self.x_size = x.shape
 
     def load_model(self, path: str = 'ckpt.pth') -> None:
-        ckpt = torch.load(path, map_location=device)
+        ckpt = torch.load(path, map_location=self.device)
         self.score_model.load_state_dict(ckpt)
 
     def _plot_loss(self):
@@ -71,6 +72,7 @@ class GANS():
 
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
+        self.sampler.device = self.device
         self.sampler.shape = [shape, self.x_size[1], self.x_size[2], self.x_size[3]]
 
         self.samples = self.sampler.sampling()
