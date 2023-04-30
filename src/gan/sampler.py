@@ -54,7 +54,7 @@ class EulerMaruyamaSamplerCorrector():
         corrector: bool = False,
         shape: list = [1, 1, 28, 28],
         eps: float = 1e-3,
-        num_steps_cor: int = 25,
+        num_steps_cor: int = 10,
         device: str = 'cuda'
     ) -> None:
         self.sde = sde
