@@ -231,3 +231,13 @@ class VPSDE(SDE):
     f = torch.sqrt(alpha)[:, None, None, None] * x - x
     G = sqrt_beta
     return f, G
+  
+
+  
+def find_sde(sde) -> str:
+    if isinstance(sde, SimpleSDE):
+        return 'SimpleSDE'
+    if isinstance(sde, VESDE):
+        return 'VESDE'
+    if isinstance(sde, VPSDE):
+        return 'VPSDE'

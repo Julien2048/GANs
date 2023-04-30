@@ -4,6 +4,12 @@ from torch.optim import Adam
 from torchvision.utils import make_grid
 import numpy as np
 import matplotlib.pyplot as plt
+from torchvision.datasets import MNIST, CIFAR10, FashionMNIST
+from torch.utils.data import DataLoader
+import torchvision.transforms as transforms
+
+from gan.utils import saved_model_paths
+from gan.sde import find_sde
 
 class GANS():
     def __init__(
@@ -23,6 +29,18 @@ class GANS():
         self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(self.device)
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
+
+        self._load_dataset()
+
+    def _load_dataset(self, batch_size: int = 128) -> None:
+        if self.data_loader == 'MNIST':
+            self.data_loader_str = self.data_loader
+            dataset = MNIST('.', train=True, transform=transforms.ToTensor(), download=True)
+            self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+        if self.data_loader == 'FMNIST':
+            self.data_loader_str = self.data_loader
+            dataset = FashionMNIST('.', train=True, transform=transforms.ToTensor(), download=True)
+            self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
     def _loss_fn(self, x: torch.Tensor) -> float:
         random_t = torch.rand(x.shape[0], device=x.device) * (1. - self.eps) + self.eps
@@ -57,7 +75,10 @@ class GANS():
 
       self.x_size = x.shape
 
-    def load_model(self, path: str = 'ckpt.pth') -> None:
+    def load_model(self, path: str = None) -> None:
+        if not path:
+            path = saved_model_paths[self.data_loader_str][find_sde(self.sde)]
+
         ckpt = torch.load(path, map_location=self.device)
         self.score_model.load_state_dict(ckpt)
 
