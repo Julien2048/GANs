@@ -1,5 +1,6 @@
 import torch
 from tqdm.notebook import tqdm as ntqdm
+import numpy as np
 
 class EulerMaruyamaSampler():
     def __init__(
