@@ -163,8 +163,8 @@ class GANS:
 
     def _plot_samples_evol(self, nb_ite: int = 5) -> None:
         l_int = (np.array([self.sde.N]*nb_ite) - np.logspace(1, np.log10(self.sde.N), nb_ite, base=10.)).astype(int)
-        selected_samples = [self.samples_evol[i][0] for i in l_int]
-        sample_grid = make_grid(selected_samples, nrow=len(selected_samples))
+        self.selected_samples = [self.samples_evol[i][0] for i in l_int]
+        sample_grid = make_grid(self.selected_samples, nrow=len(self.selected_samples))
 
         plt.figure(figsize=(6,6))
         plt.axis('off')
