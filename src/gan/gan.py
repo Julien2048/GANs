@@ -36,7 +36,8 @@ class GANS:
         self.eps = eps
         self.batch_size = batch_size
         self.size = size
-
+        
+        self._get_size_ex()
         self._load_dataset()
 
     def _load_dataset(self) -> None:
@@ -161,3 +162,18 @@ class GANS:
             for i in range(self.samples.shape[0]):
                 plt.imshow(self.samples[i][0].to("cpu"))
                 plt.show()
+
+    def _plot_samples_evol(self, nb_ite: int = 5) -> None:
+        l_int = (np.array([self.sde.N]*nb_ite) - np.logspace(1, np.log10(self.sde.N), nb_ite, base=10.)).astype(int)
+        selected_samples = [self.samples_evol[i][0] for i in l_int]
+        sample_grid = make_grid(selected_samples, nrow=len(selected_samples))
+
+        plt.figure(figsize=(6,6))
+        plt.axis('off')
+        plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
+        plt.show()
+
+    def _get_size_ex(self) -> list:
+        for x, y in self.data_loader:
+            self.x_example = x
+            break
