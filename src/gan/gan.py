@@ -14,7 +14,15 @@ from gan.sde import find_sde
 
 class GANS:
     def __init__(
-        self, model, data_loader, sde, sampler, eps=1e-5, device: str = "cuda"
+        self,
+        model,
+        data_loader,
+        sde,
+        sampler,
+        eps=1e-5,
+        device: str = "cuda",
+        batch_size: int = 128,
+        size: int = 128,
     ) -> None:
         self.model = model
         self.sde = sde
@@ -26,17 +34,19 @@ class GANS:
         )
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
+        self.batch_size = batch_size
+        self.size = size
 
         self._load_dataset()
 
-    def _load_dataset(self, batch_size: int = 128) -> None:
+    def _load_dataset(self) -> None:
         if self.data_loader == "MNIST":
             self.data_loader_str = self.data_loader
             dataset = MNIST(
                 ".", train=True, transform=transforms.ToTensor(), download=True
             )
             self.data_loader = DataLoader(
-                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+                dataset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
         if self.data_loader == "FMNIST":
             self.data_loader_str = self.data_loader
@@ -44,20 +54,20 @@ class GANS:
                 ".", train=True, transform=transforms.ToTensor(), download=True
             )
             self.data_loader = DataLoader(
-                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+                dataset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
         if self.data_loader == "Food101":
             transform = transforms.Compose(
                 [
                     transforms.Grayscale(),
                     transforms.ToTensor(),
-                    transforms.Resize((252, 252), antialias=None),
+                    transforms.Resize((self.size, self.size), antialias=None),
                 ]
             )
             self.data_loader_str = self.data_loader
             dataset = Food101(".", split="train", transform=transform, download=True)
             self.data_loader = DataLoader(
-                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+                dataset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
 
     def _loss_fn(self, x: torch.Tensor) -> float:
