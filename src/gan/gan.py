@@ -133,18 +133,16 @@ class GANS:
 
         return self.samples
 
-    def direct_sampling(self, shape: int = 1) -> torch.Tensor:
+    def direct_sampling(self, shape: int = 1, save_evolution: bool = False) -> torch.Tensor:
+
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
-        self.sampler.shape = [
-            shape,
-            self.sampler.shape[1],
-            self.sampler.shape[2],
-            self.sampler.shape[3],
-        ]
+        self.sampler.shape = [shape, self.sampler.shape[1], self.sampler.shape[2], self.sampler.shape[3]]
 
-        self.samples = self.sampler.sampling()
-
+        if save_evolution:
+            self.samples, self.samples_evol = self.sampler.sampling(save_evolution = save_evolution)
+        else:
+            self.samples = self.sampler.sampling()
         # return self.samples
 
     def plot_samples(self, grid: bool = True) -> None:
