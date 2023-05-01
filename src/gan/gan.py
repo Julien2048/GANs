@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from torchvision.datasets import MNIST, CIFAR10, FashionMNIST, Food101
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
+from datasets import load_dataset
 
 from gan.utils import saved_model_paths
 from gan.sde import find_sde
@@ -46,13 +47,17 @@ class GANS:
             self.data_loader = DataLoader(
                 dataset, batch_size=batch_size, shuffle=True, num_workers=4
             )
-        if self.data_loader == "Food101":
-            # Define the transformation to convert to grayscale
+        if self.data_loader == "TinyImagenet":
             transform = transforms.Compose(
-                [transforms.Grayscale(), transforms.ToTensor()]
+                [
+                    transforms.Grayscale(),
+                    transforms.ToTensor(),
+                ]
             )
             self.data_loader_str = self.data_loader
-            dataset = Food101(".", split="train", transform=transform, download=True)
+            dataset = load_dataset(
+                "Maysee/tiny-imagenet", split="train", transform=transform
+            )
             self.data_loader = DataLoader(
                 dataset, batch_size=batch_size, shuffle=True, num_workers=4
             )
