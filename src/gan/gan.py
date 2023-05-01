@@ -37,7 +37,7 @@ class GANS:
         self.batch_size = batch_size
         self.size = size
         
-        self._get_size_ex()
+        # self._get_size_ex()
         self._load_dataset()
 
     def _load_dataset(self) -> None:
