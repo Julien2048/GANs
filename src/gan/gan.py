@@ -4,76 +4,95 @@ from torch.optim import Adam
 from torchvision.utils import make_grid
 import numpy as np
 import matplotlib.pyplot as plt
-from torchvision.datasets import MNIST, CIFAR10, FashionMNIST
+from torchvision.datasets import MNIST, CIFAR10, FashionMNIST, Food101
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 from gan.utils import saved_model_paths
 from gan.sde import find_sde
 
-class GANS():
+
+class GANS:
     def __init__(
-        self,
-        model,
-        data_loader,
-        sde,
-        sampler,
-        eps=1e-5,
-        device: str = 'cuda'
+        self, model, data_loader, sde, sampler, eps=1e-5, device: str = "cuda"
     ) -> None:
         self.model = model
         self.sde = sde
         self.data_loader = data_loader
         self.sampler = sampler
         self.device = device
-        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(self.device)
+        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(
+            self.device
+        )
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
 
         self._load_dataset()
 
     def _load_dataset(self, batch_size: int = 128) -> None:
-        if self.data_loader == 'MNIST':
+        if self.data_loader == "MNIST":
             self.data_loader_str = self.data_loader
-            dataset = MNIST('.', train=True, transform=transforms.ToTensor(), download=True)
-            self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-        if self.data_loader == 'FMNIST':
+            dataset = MNIST(
+                ".", train=True, transform=transforms.ToTensor(), download=True
+            )
+            self.data_loader = DataLoader(
+                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+            )
+        if self.data_loader == "FMNIST":
             self.data_loader_str = self.data_loader
-            dataset = FashionMNIST('.', train=True, transform=transforms.ToTensor(), download=True)
-            self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+            dataset = FashionMNIST(
+                ".", train=True, transform=transforms.ToTensor(), download=True
+            )
+            self.data_loader = DataLoader(
+                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+            )
+        if self.data_loader == "Food101":
+            # Define the transformation to convert to grayscale
+            transform = transforms.Compose(
+                [transforms.Grayscale(), transforms.ToTensor()]
+            )
+            self.data_loader_str = self.data_loader
+            dataset = Food101(".", split="train", transform=transform, download=True)
+            self.data_loader = DataLoader(
+                dataset, batch_size=batch_size, shuffle=True, num_workers=4
+            )
 
     def _loss_fn(self, x: torch.Tensor) -> float:
-        random_t = torch.rand(x.shape[0], device=x.device) * (1. - self.eps) + self.eps
+        random_t = torch.rand(x.shape[0], device=x.device) * (1.0 - self.eps) + self.eps
         z = torch.randn_like(x)
         mean, std = self.sde.marginal_prob(x, random_t)
         perturbed_data = mean + z * std[:, None, None, None]
         score = self.score_model(perturbed_data, random_t)
-        loss = torch.mean(torch.sum((score * std[:, None, None, None] + z)**2, dim=(1,2,3)))
+        loss = torch.mean(
+            torch.sum((score * std[:, None, None, None] + z) ** 2, dim=(1, 2, 3))
+        )
         return loss
 
-    def train_model(self, n_epochs: int = 50, batch_size: int = 32, lr: float = 1e-4) -> None:
-      optimizer = Adam(self.score_model.parameters(), lr=lr)
-      # tqdm_epoch = tqdm.trange(n_epochs)
-      self.losses = []
+    def train_model(
+        self, n_epochs: int = 50, batch_size: int = 32, lr: float = 1e-4
+    ) -> None:
+        optimizer = Adam(self.score_model.parameters(), lr=lr)
+        # tqdm_epoch = tqdm.trange(n_epochs)
+        self.losses = []
 
-      for epoch in ntqdm(range(n_epochs)):
-          avg_loss = 0
-          num_items = 0
-        
-          for x, y in self.data_loader:
-              x = x.to(self.device)
-              loss = self._loss_fn(x)
-              optimizer.zero_grad()
-              loss.backward()
-              optimizer.step()
-              avg_loss += loss.item() * x.shape[0]
-              num_items += x.shape[0]
-          #tqdm_epoch.set_description('Average Loss: {:5f}'.format(avg_loss / num_items))
-          self.losses.append(avg_loss / num_items) 
-          
-          torch.save(self.score_model.state_dict(), 'ckpt.pth')
+        for _ in ntqdm(range(n_epochs)):
+            avg_loss = 0
+            num_items = 0
 
-      self.x_size = x.shape
+            for x, _ in self.data_loader:
+                x = x.to(self.device)
+                loss = self._loss_fn(x)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                avg_loss += loss.item() * x.shape[0]
+                num_items += x.shape[0]
+            # tqdm_epoch.set_description('Average Loss: {:5f}'.format(avg_loss / num_items))
+            self.losses.append(avg_loss / num_items)
+
+            torch.save(self.score_model.state_dict(), "ckpt.pth")
+
+        self.x_size = x.shape
 
     def load_model(self, path: str = None) -> None:
         if not path:
@@ -85,13 +104,12 @@ class GANS():
     def _plot_loss(self):
         abs = np.arange(len(self.losses))
         plt.plot(abs, self.losses)
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
         plt.grid(True)
         plt.show()
 
     def sampling(self, shape: int = 1) -> torch.Tensor:
-
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
         self.sampler.device = self.device
@@ -102,26 +120,31 @@ class GANS():
         return self.samples
 
     def direct_sampling(self, shape: int = 1) -> torch.Tensor:
-
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
-        self.sampler.shape = [shape, self.sampler.shape[1], self.sampler.shape[2], self.sampler.shape[3]]
+        self.sampler.shape = [
+            shape,
+            self.sampler.shape[1],
+            self.sampler.shape[2],
+            self.sampler.shape[3],
+        ]
 
         self.samples = self.sampler.sampling()
 
         # return self.samples
 
     def plot_samples(self, grid: bool = True) -> None:
-        
         if grid:
-            sample_grid = make_grid(self.samples, nrow=int(np.sqrt(self.samples.shape[0])))
+            sample_grid = make_grid(
+                self.samples, nrow=int(np.sqrt(self.samples.shape[0]))
+            )
 
-            plt.figure(figsize=(6,6))
-            plt.axis('off')
-            plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
+            plt.figure(figsize=(6, 6))
+            plt.axis("off")
+            plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0.0, vmax=1.0)
             plt.show()
-        
+
         else:
             for i in range(self.samples.shape[0]):
-                plt.imshow(self.samples[i][0].to('cpu'))
+                plt.imshow(self.samples[i][0].to("cpu"))
                 plt.show()
