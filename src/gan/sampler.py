@@ -3,9 +3,8 @@ from tqdm.notebook import tqdm as ntqdm
 import numpy as np
 from scipy import integrate
 
+
 # @title Euler-Maruyama Direct Sampling
-
-
 class EulerMaruyamaSampler:
     def __init__(
         self,
@@ -25,10 +24,6 @@ class EulerMaruyamaSampler:
         self.device = device
 
     def sampling(self, save_evolution: bool = False) -> torch.Tensor:
-        # t = torch.ones(batch_size, device=device)
-        # init_x = torch.randn(batch_size, 1, 28, 28, device=device) \
-        #   * marginal_prob_std(t)[:, None, None, None]
-
         if save_evolution:
             sampler_evol = []
 
@@ -40,7 +35,7 @@ class EulerMaruyamaSampler:
             for time_step in ntqdm(time_steps):
                 x = x.to(self.device)
                 batch_time_step = torch.ones(x.shape[0], device=self.device) * time_step
-                f, g = self.sde.sde(x, batch_time_step)
+                _, g = self.sde.sde(x, batch_time_step)
                 mean_x = (
                     x
                     + (g**2)[:, None, None, None]
@@ -54,8 +49,11 @@ class EulerMaruyamaSampler:
                     sampler_evol.append(mean_x)
 
         self.sampler = mean_x
-        # return self.sampler if not(save_evolution) else self.sampler, sampler_evol
-        return self.sampler
+
+        if save_evolution:
+            return self.sampler, sampler_evol
+        else:
+            return self.sampler
 
 
 class EulerMaruyamaSamplerCorrector:
@@ -88,7 +86,7 @@ class EulerMaruyamaSamplerCorrector:
                 x = x.to(self.device)
                 batch_time_step = torch.ones(x.shape[0], device=self.device) * time_step
 
-                for n_cor in range(self.num_steps_cor):
+                for _ in range(self.num_steps_cor):
                     grad = self.score_model(x, batch_time_step)
                     grad_norm = torch.norm(
                         grad.reshape(grad.shape[0], -1), dim=-1
@@ -101,7 +99,7 @@ class EulerMaruyamaSamplerCorrector:
                         + torch.sqrt(2 * langevin_step_size) * torch.randn_like(x)
                     )
 
-                f, g = self.sde.sde(x, batch_time_step)
+                _, g = self.sde.sde(x, batch_time_step)
                 mean_x = (
                     x
                     + (g**2)[:, None, None, None]
@@ -154,9 +152,7 @@ class ODESampler:
         return -0.5 * (g[0] ** 2) * self._score_eval_wrapper(x, time_steps)
 
     def sampling(self) -> torch.Tensor:
-        init_x = self.sde.prior_sampling(self.shape).to(
-            self.device
-        )  # init du tuto donc ok
+        init_x = self.sde.prior_sampling(self.shape).to(self.device)
 
         res = integrate.solve_ivp(
             self._ode_func,

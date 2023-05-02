@@ -149,8 +149,12 @@ class SimpleSDE(SDE):
             * self.marginal_prob_std(t)[:, None, None, None]
         )
 
-    def prior_logp(self):
-        pass
+    def prior_logp(self, z):
+        shape = z.shape
+        N = np.prod(shape[1:])
+        return -N / 2.0 * np.log(2 * np.pi * self.sigma**2) - torch.sum(
+            z**2, dim=(1, 2, 3)
+        ) / (2 * self.sigma**2)
 
 
 class VESDE(SDE):

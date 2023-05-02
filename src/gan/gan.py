@@ -154,9 +154,10 @@ class GANS:
             )
         else:
             self.samples = self.sampler.sampling()
-        # return self.samples
 
-    def plot_samples(self, grid: bool = True) -> None:
+    def plot_samples(
+        self, grid: bool = True, comparison: bool = False, title: str = "Samples"
+    ) -> None:
         if grid:
             sample_grid = make_grid(
                 self.samples, nrow=int(np.sqrt(self.samples.shape[0]))
@@ -166,6 +167,14 @@ class GANS:
             plt.axis("off")
             plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0.0, vmax=1.0)
             plt.show()
+
+        elif comparison:
+            sample_grid = make_grid(
+                self.samples, nrow=int(np.sqrt(self.samples.shape[0]))
+            )
+            plt.axis("off")
+            plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0.0, vmax=1.0)
+            plt.title(title)
 
         else:
             for i in range(self.samples.shape[0]):
