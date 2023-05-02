@@ -10,3 +10,6 @@ __pycache__
 # Data
 FashionMNIST/
 MNIST/
+
+# Mac
+.DS_Store
