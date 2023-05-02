@@ -8,8 +8,8 @@ from torchvision.datasets import MNIST, CIFAR10, FashionMNIST, Food101
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
-from gan.utils import saved_model_paths
-from gan.sde import find_sde
+from src.gan.utils import saved_model_paths
+from src.gan.sde import find_sde
 
 
 class GANS:
@@ -29,14 +29,15 @@ class GANS:
         self.data_loader = data_loader
         self.sampler = sampler
         self.device = device
-        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob)).to(
+        self.score_model = torch.nn.DataParallel(model(self.sde.marginal_prob_std)).to(
             self.device
         )
         self.rsde = self.sde.reverse(self.score_model)
         self.eps = eps
         self.batch_size = batch_size
         self.size = size
-        
+        self.sde.device = self.device
+
         # self._get_size_ex()
         self._load_dataset()
 
@@ -57,6 +58,7 @@ class GANS:
             self.data_loader = DataLoader(
                 dataset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
+
         if self.data_loader == "Food101":
             transform = transforms.Compose(
                 [
@@ -124,23 +126,32 @@ class GANS:
         plt.show()
 
     def sampling(self, shape: int = 1) -> torch.Tensor:
+        self.sampler.device = self.device
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
-        self.sampler.device = self.device
         self.sampler.shape = [shape, self.x_size[1], self.x_size[2], self.x_size[3]]
 
         self.samples = self.sampler.sampling()
 
         return self.samples
 
-    def direct_sampling(self, shape: int = 1, save_evolution: bool = False) -> torch.Tensor:
-
+    def direct_sampling(
+        self, shape: int = 1, save_evolution: bool = False
+    ) -> torch.Tensor:
+        self.sampler.device = self.device
         self.sampler.sde = self.sde
         self.sampler.score_model = self.score_model
-        self.sampler.shape = [shape, self.sampler.shape[1], self.sampler.shape[2], self.sampler.shape[3]]
+        self.sampler.shape = [
+            shape,
+            self.sampler.shape[1],
+            self.sampler.shape[2],
+            self.sampler.shape[3],
+        ]
 
         if save_evolution:
-            self.samples, self.samples_evol = self.sampler.sampling(save_evolution = save_evolution)
+            self.samples, self.samples_evol = self.sampler.sampling(
+                save_evolution=save_evolution
+            )
         else:
             self.samples = self.sampler.sampling()
         # return self.samples
@@ -162,16 +173,19 @@ class GANS:
                 plt.show()
 
     def _plot_samples_evol(self, nb_ite: int = 5) -> None:
-        l_int = (np.array([self.sde.N]*nb_ite) - np.logspace(1, np.log10(self.sde.N), nb_ite, base=10.)).astype(int)
-        self.selected_samples = [self.samples_evol[i][0] for i in l_int]
-        sample_grid = make_grid(self.selected_samples, nrow=len(self.selected_samples))
+        l_int = (
+            np.array([self.sde.N] * nb_ite)
+            - np.logspace(1, np.log10(self.sde.N), nb_ite, base=10.0)
+        ).astype(int)
+        selected_samples = [self.samples_evol[i][0] for i in l_int]
+        sample_grid = make_grid(selected_samples, nrow=len(selected_samples))
 
-        plt.figure(figsize=(6,6))
-        plt.axis('off')
-        plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
+        plt.figure(figsize=(6, 6))
+        plt.axis("off")
+        plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0.0, vmax=1.0)
         plt.show()
 
     def _get_size_ex(self) -> list:
-        for x, y in self.data_loader:
+        for x, _ in self.data_loader:
             self.x_example = x
             break
