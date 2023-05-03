@@ -8,8 +8,8 @@ from torchvision.datasets import MNIST, CIFAR10, FashionMNIST, Food101
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
-from src.gan.utils import saved_model_paths
-from src.gan.sde import find_sde
+from gan.utils import saved_model_paths
+from gan.sde import find_sde
 
 
 class GANS:
